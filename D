@@ -349,7 +349,6 @@ ui.onDriverNameTag(function(car)
             vec2(avatarX + avatarSize + 1, avatarY + avatarSize + 1),
             rgbm(1, 1, 1, 0.5)
         )
-        end)
         
         if not drawSuccess then
             local errorMsg = tostring(drawError or "unknown error")
