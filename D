@@ -232,22 +232,6 @@ ui.onDriverNameTag(function(car)
     -- Driver name (leftmost)
     ui.dwriteDrawText(name, 22, vec2(-80, 6), rgbm(1,1,1,1), 1, ui.Alignment.Left, ui.Alignment.Top)
 
-    -- Steam Avatar (right of name)
-    local avatarUrl = steamAvatarUrls[car.sessionID]
-    if avatarUrl then
-        local success = pcall(function()
-            ui.drawImage(
-                avatarUrl,
-                vec2(-50, 6), -- Adjust position as needed
-                vec2(-50 + 32, 6 + 32), -- Adjust size as needed (e.g., 32x32)
-                rgbm(1, 1, 1, 1)
-            )
-        end)
-        if not success then
-            ac.log("Nameplate: Failed to draw avatar from URL: " .. avatarUrl)
-        end
-    end
-    
     -- Layout: Name | Input | Flag | Ping Bars  
     local inputX = 322      -- Input icon position (moved further right to avoid name overlap)
     local flagX = 320       -- Flag position (moved right to make room for input)  
@@ -266,7 +250,26 @@ ui.onDriverNameTag(function(car)
  
     -- رقم البنق يمين الشارة (نفس فكرة السكربت الثاني)
     ui.dwriteDrawText(tostring(ping).."ms", 26, vec2(barsX + 40, 8), pingColor, 1, ui.Alignment.Left, ui.Alignment.Top)
- 
+
+    -- Steam Avatar (right of ping)
+    local avatarUrl = steamAvatarUrls[car.sessionID]
+    if avatarUrl then
+        local avatarX = barsX + 80 -- Adjust X position relative to ping bars
+        local avatarY = 8 -- Adjust Y position to align with ping text
+        local avatarSize = 24 -- Adjust size as needed (e.g., 24x24)
+        local success = pcall(function()
+            ui.drawImage(
+                avatarUrl,
+                vec2(avatarX, avatarY),
+                vec2(avatarX + avatarSize, avatarY + avatarSize),
+                rgbm(1, 1, 1, 1)
+            )
+        end)
+        if not success then
+            ac.log("Nameplate: Failed to draw avatar from URL: " .. avatarUrl)
+        end
+    end
+    
     -- الشريط الأزرق للسرعة
     local minSpeed, maxSpeed = 0, 260
     local speedBoxX = -90
@@ -302,9 +305,6 @@ function script.update(dt)
             serverDataCount = serverDataCount + 1
         end
         ac.log("Nameplate: Server input modes tracked: " .. serverDataCount .. " | Last broadcast: " .. 
-               (lastBroadcastReceived > 0 and string.format("%.1fs ago", currentTime - lastBroadcastReceived) or "never"))
+               (lastBroadcastReceived > 0 and string.format("%.1fs ago", currentTime - lastDebugTime) or "never"))
     end
 end
-
-
-
