@@ -254,9 +254,9 @@ ui.onDriverNameTag(function(car)
     -- Steam Avatar (right of ping)
     local avatarUrl = steamAvatarUrls[car.sessionID]
     if avatarUrl then
-        local avatarX = barsX + 20 -- Adjust X position relative to ping bars
+        local avatarX = barsX + -120 -- Adjust X position relative to ping bars
         local avatarY = 4 -- Adjust Y position to align with ping text
-        local avatarSize = 48 -- Adjust size as needed (e.g., 24x24)
+        local avatarSize = 55 -- Adjust size as needed (e.g., 24x24)
         local success = pcall(function()
             ui.drawImage(
                 avatarUrl,
