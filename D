@@ -41,7 +41,6 @@ local steamAvatarBroadcastEvent = ac.OnlineEvent({
         
         -- Clear and parse new data
         steamAvatarUrls = {}
-        local urlCount = 0
         
         -- Parse format: "sessionId:avatarUrl;sessionId:avatarUrl;..."
         for sessionData in string.gmatch(message.data, "([^;]+)") do
@@ -50,12 +49,8 @@ local steamAvatarBroadcastEvent = ac.OnlineEvent({
                 local sessionIdNum = tonumber(sessionId)
                 steamAvatarUrls[sessionIdNum] = avatarUrl
                 ac.log("Nameplate: Steam avatar - Session " .. sessionId .. " = " .. avatarUrl)
-                urlCount = urlCount + 1
             end
         end
-        ac.log("Nameplate: Total Steam avatars received: " .. urlCount)
-    else
-        ac.log("Nameplate: Received empty or invalid Steam avatar data")
     end
 end)
 
@@ -123,6 +118,7 @@ function drawInputIcon(inputType, x, y, alpha)
             )
         end)
         if not success then
+            ac.log("Nameplate: Failed to draw wheel icon from URL.")
             ui.dwriteDrawText("🏎", 26, vec2(x, y), rgbm(0.2, 1.0, 0.2, alpha), 1, ui.Alignment.Left, ui.Alignment.Top)
         end
     elseif inputType == "keyboard" then
@@ -138,6 +134,7 @@ function drawInputIcon(inputType, x, y, alpha)
             )
         end)
         if not success then
+            ac.log("Nameplate: Failed to draw gamepad icon from URL.")
             ui.dwriteDrawText("🎮", 26, vec2(x, y), rgbm(1.0, 0.8, 0.2, alpha), 1, ui.Alignment.Left, ui.Alignment.Top)
         end
     else
@@ -235,173 +232,40 @@ ui.onDriverNameTag(function(car)
     -- Driver name (leftmost)
     ui.dwriteDrawText(name, 22, vec2(-80, 6), rgbm(1,1,1,1), 1, ui.Alignment.Left, ui.Alignment.Top)
 
-        
-    -- Get avatar URL for this player
+    -- Steam Avatar (right of name)
     local avatarUrl = steamAvatarUrls[car.sessionID]
-    
-    -- Calculate position to the left of ping bars
-    local avatarX = 350  -- Position to the left of ping bars
-    local avatarY = 2    -- Slightly below the top of the nameplate
-    local avatarSize = 30 -- Size of the avatar box
-    
-    -- Draw default background for the avatar
-    ui.drawRectFilled(
-        vec2(avatarX, avatarY),
-        vec2(avatarX + avatarSize, avatarY + avatarSize),
-        rgbm(0.2, 0.2, 0.2, 0.8)
-    )
-    
-    -- Draw border around avatar
-    ui.drawRect(
-        vec2(avatarX - 1, avatarY - 1),
-        vec2(avatarX + avatarSize + 1, avatarY + avatarSize + 1),
-        rgbm(1, 1, 1, 0.5),
-        1
-    )
-    
-    -- Layout positions - MOVED UP to be before first use
-    local inputX = 322      -- Input icon position
-    local flagX = 320       -- Flag position
-    local barsX = 390       -- Ping bars position (moved right to make room for avatar)
-    local barsY = 18        -- Vertical position for ping bars
-    
-    -- Input icon (moved further right and better vertical centering) - only for real players
-    local inputType = getInputType(car)
-    drawInputIcon(inputType, inputX, 35, 1.0)  -- Draw input icon
-    
-    -- Country flag
-    drawCountryFlag(nationCode, flagX, 9)
-    
-    -- Ping bars (rightmost)
-    drawPingBars(barsX, barsY, ping, pingColor)
-    
-    -- Ping text
-    ui.dwriteDrawText(tostring(ping).."ms", 26, vec2(barsX + 40, 8), pingColor, 1, ui.Alignment.Left, ui.Alignment.Top)
-    
     if avatarUrl then
-        -- Log the avatar URL being used
-        ac.log("Attempting to load avatar for session " .. tostring(car.sessionID) .. ": " .. tostring(avatarUrl))
-        
-        -- Clean up URL and ensure it's properly formatted
-        local cleanUrl = avatarUrl:gsub("^%s*(.-)%s*$", "%1")
-        
-        -- Check if URL is valid
-        if not cleanUrl:match("^https?://") then
-            ac.log("Invalid URL format: " .. tostring(cleanUrl))
-            ui.dwriteDrawText("❌", 20, vec2(avatarX + 5, avatarY + 5), rgbm(1, 0, 0, 1))
-            return
-        end
-        
-        -- Add cache buster to URL
-        local cacheBuster = "t=" .. tostring(os.clock())
-        local separator = cleanUrl:find("?") and "&" or "?"
-        local fullUrl = cleanUrl .. separator .. cacheBuster
-        
-        -- Try loading the image with better error handling
-        local drawSuccess, drawError = pcall(function()
-            -- First, try the avatar URL directly with different formats
-            local formats = {
-                {url = fullUrl, desc = "original URL"},
-                {url = fullUrl:gsub("%.png$", ".jpg"), desc = "JPG version"},
-                {url = fullUrl:gsub("%.png$", ".jpeg"), desc = "JPEG version"},
-                {url = fullUrl:gsub("%.png$", "") .. ".jpg", desc = "force JPG"}
-            }
-            
-            -- Add test image as last resort
-            table.insert(formats, {
-                url = "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
-                desc = "test image (Google logo)"
-            })
-            
-            local lastError = ""
-            for _, format in ipairs(formats) do
-                local success, err = pcall(function()
-                    ac.log("Trying to load " .. format.desc .. ": " .. format.url)
-                    ui.drawImage(
-                        format.url,
-                        vec2(avatarX, avatarY),
-                        vec2(avatarX + avatarSize, avatarY + avatarSize),
-                        rgbm(1, 1, 1, 1)
-                    )
-                    return true
-                end)
-                
-                if success then
-                    ac.log("Successfully loaded " .. format.desc)
-                    if format.desc == "test image (Google logo)" then
-                        -- If only test image worked, log the original URL for debugging
-                        ac.log("Original avatar URL: " .. fullUrl)
-                    end
-                    return true
-                else
-                    lastError = tostring(err or "unknown error")
-                    ac.log("Failed to load " .. format.desc .. ": " .. lastError)
-                end
-            end
-            
-            -- If we get here, all formats failed
-            error("All image formats failed: " .. lastError)
-        end)
-        
-        -- Add a small border to help with visibility
-        ui.drawRect(
-            vec2(avatarX - 1, avatarY - 1),
-            vec2(avatarX + avatarSize + 1, avatarY + avatarSize + 1),
-            rgbm(1, 1, 1, 0.5)
-        )
-        
-        if not drawSuccess then
-            local errorMsg = tostring(drawError or "unknown error")
-            ac.log("Failed to load avatar for session " .. tostring(car.sessionID) .. ": " .. errorMsg)
-            
-            -- Show error icon with more details
-            ui.drawRectFilled(
-                vec2(avatarX, avatarY),
-                vec2(avatarX + avatarSize, avatarY + avatarSize),
-                rgbm(0.2, 0.2, 0.2, 0.8)
+        local success = pcall(function()
+            ui.drawImage(
+                avatarUrl,
+                vec2(-50, 6), -- Adjust position as needed
+                vec2(-50 + 32, 6 + 32), -- Adjust size as needed (e.g., 32x32)
+                rgbm(1, 1, 1, 1)
             )
-            ui.dwriteDrawText("❌", 20, vec2(avatarX + 5, avatarY + 5), rgbm(1, 0, 0, 1))
-            
-            -- Log detailed error information
-            ac.log("Avatar Error Details:")
-            ac.log("- URL: " .. tostring(fullUrl))
-            ac.log("- Error: " .. errorMsg)
-            ac.log("- Avatar Size: " .. tostring(avatarSize) .. "x" .. tostring(avatarSize))
-            ac.log("- Position: X=" .. tostring(avatarX) .. " Y=" .. tostring(avatarY))
-            
-            -- Try to log URL content type if possible
-            if fullUrl:match("^https?://") then
-                local cmd = string.format('curl -I -s -o /dev/null -w "%%{content_type}" "%s"', fullUrl)
-                local handle = io.popen(cmd)
-                if handle then
-                    local contentType = handle:read("*a")
-                    handle:close()
-                    ac.log("- Content-Type: " .. tostring(contentType))
-                end
-            end
-            
-            -- Simple HTTP check without requiring additional libraries
-            local function checkUrl(url)
-                local cmd = string.format('curl -I -s -o /dev/null -w "%%{http_code}" "%s"', url)
-                local handle = io.popen(cmd)
-                if handle then
-                    local result = handle:read("*a")
-                    handle:close()
-                    return tonumber(result) or 0
-                end
-                return 0
-            end
-            
-            local statusCode = checkUrl(cleanUrl)
-            ac.log("HTTP check for avatar URL returned status: " .. tostring(statusCode))
+        end)
+        if not success then
+            ac.log("Nameplate: Failed to draw avatar from URL: " .. avatarUrl)
         end
-    else
-        -- No avatar URL available
-        ac.log("No avatar URL for session: " .. tostring(car.sessionID))
-        ui.dwriteDrawText("👤", 20, vec2(avatarX + 5, avatarY + 5), rgbm(1, 1, 1, 1))
     end
     
-    -- Layout positions are now at the top of the function
+    -- Layout: Name | Input | Flag | Ping Bars  
+    local inputX = 322      -- Input icon position (moved further right to avoid name overlap)
+    local flagX = 320       -- Flag position (moved right to make room for input)  
+    local barsX = 320       -- Ping bars position (moved right)
+    local barsY = 18
+ 
+    -- Input icon (moved further right and better vertical centering) - only for real players
+    local inputType = getInputType(car)
+    drawInputIcon(inputType, inputX, 35, 1.0)  -- Lower vertical position for better centering
+ 
+    -- Country flag
+    drawCountryFlag(nationCode, flagX, 9)
+ 
+    -- Ping bars (rightmost)
+    drawPingBars(barsX, barsY, ping, pingColor)
+ 
+    -- رقم البنق يمين الشارة (نفس فكرة السكربت الثاني)
+    ui.dwriteDrawText(tostring(ping).."ms", 26, vec2(barsX + 40, 8), pingColor, 1, ui.Alignment.Left, ui.Alignment.Top)
  
     -- الشريط الأزرق للسرعة
     local minSpeed, maxSpeed = 0, 260
@@ -441,4 +305,6 @@ function script.update(dt)
                (lastBroadcastReceived > 0 and string.format("%.1fs ago", currentTime - lastBroadcastReceived) or "never"))
     end
 end
+
+
 
