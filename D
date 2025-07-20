@@ -230,7 +230,7 @@ ui.onDriverNameTag(function(car)
     ui.drawRectFilled(vec2(-90, 0), vec2(470, 36), rgbm(0, 0, 0, 0.0), 8)
     
     -- Driver name (leftmost)
-    ui.dwriteDrawText(name, 22, vec2(-80, 6), rgbm(1,1,1,1), 1, ui.Alignment.Left, ui.Alignment.Top)
+    ui.dwriteDrawText(name, 22, vec2(-77, 6), rgbm(1,1,1,1), 1, ui.Alignment.Left, ui.Alignment.Top)
 
     -- Layout: Name | Input | Flag | Ping Bars  
     local inputX = 322      -- Input icon position (moved further right to avoid name overlap)
@@ -256,7 +256,7 @@ ui.onDriverNameTag(function(car)
     if avatarUrl then
         local avatarX = barsX + -321 -- Adjust X position relative to ping bars
         local avatarY = 3 -- Adjust Y position to align with ping text
-        local avatarSize = 63 -- Adjust size as needed (e.g., 24x24)
+        local avatarSize = 64 -- Adjust size as needed (e.g., 24x24)
         local success = pcall(function()
             ui.drawImage(
                 avatarUrl,
