@@ -111,7 +111,7 @@ function drawInputIcon(inputType, x, y, alpha)
         -- Use steering wheel image - bigger size (36x36) and white color
         local success = pcall(function()
             ui.drawImage(
-                "https://cdn.discordapp.com/attachments/1192280185727369256/1392964362502668460/5385997.png?ex=687172a8&is=68702128&hm=c1cb5f04b2dd261d79283248bd18491ef99529e5ae28d53a871d752a2096c687&",
+                "https://i.imgur.com/OEENH81.png",
                 vec2(x, y),
                 vec2(x + 25, y + 25),
                 rgbm(1.0, 1.0, 1.0, alpha)
