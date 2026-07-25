@@ -2173,11 +2173,12 @@ uSt.gifPreloaded = false
 -- شبكة مبدئية تظهر فوراً بدون انتظار الشبكة (روابط Tenor مباشرة لدرفت سعودي)
 -- مجموعة GIF جاهزة داخل السكربت (روابط مباشرة تُعرض فوراً، بلا بحث بالويب)
 uSt.gifSeed = {
-  "https://media1.tenor.com/m/VLHyJYfUG6cAAAAd/2ws.gif",
-  "https://media1.tenor.com/m/qiKXpsSLt1QAAAAd/drift-drifting.gif",
-  "https://media1.tenor.com/m/13uSRhTtY-UAAAAd/hajwala-saudi-drift.gif",
-  "https://media1.tenor.com/m/hbbebHdX53IAAAAd/drifting-cars.gif",
-  "https://media1.tenor.com/m/M1lYFo_dvjUAAAAd/saudi-drift-arab-drift.gif",
+  "https://media1.tenor.com/m/VLHyJYfUG6cAAAAC/2ws.gif",
+  "https://media1.tenor.com/m/qiKXpsSLt1QAAAAC/drift-drifting.gif",
+  "https://media1.tenor.com/m/13uSRhTtY-UAAAAC/hajwala-saudi-drift.gif",
+  "https://media1.tenor.com/m/hbbebHdX53IAAAAC/drifting-cars.gif",
+  "https://media1.tenor.com/m/M1lYFo_dvjUAAAAC/saudi-drift-arab-drift.gif",
+  "https://media1.tenor.com/m/4Xgv7H5v8okAAAAC/tafheet-hajwala.gif",
 }
 uSt.gifSearch = function(q)
   -- لا بحث بالويب: الصور مزروعة جاهزة
@@ -3424,6 +3425,7 @@ end
 
 function script.drawUI()
   local sim = ac.getSim()
+  pcall(function() if ui.setAnimatedTexturesActive then ui.setAnimatedTexturesActive(true) end end)
   uSt.drawSpectate(sim)
 
   -- إخفاء شات اللعبة الأصلي (طريقة IDDL): نبحث عن نافذته ونخفيها، ونعيد التطبيق كل 5ث
