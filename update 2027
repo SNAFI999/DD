@@ -2171,58 +2171,22 @@ uSt.gifBusy = false
 uSt.gifMsg = ""
 uSt.gifPreloaded = false
 -- شبكة مبدئية تظهر فوراً بدون انتظار الشبكة (روابط Tenor مباشرة لدرفت سعودي)
+-- مجموعة GIF جاهزة داخل السكربت (روابط مباشرة تُعرض فوراً، بلا بحث بالويب)
 uSt.gifSeed = {
   "https://media.tenor.com/9GJHqZ6nQ2cAAAAC/drift-drifting.gif",
   "https://media.tenor.com/S3pxq3aG2u8AAAAC/car-drift.gif",
   "https://media.tenor.com/1Wd8n7dWQvUAAAAC/drift-car.gif",
   "https://media.tenor.com/xkGnO6d4bYcAAAAC/drift-smoke.gif",
+  "https://media.tenor.com/oPqLp8gVjhIAAAAC/drift-supra.gif",
+  "https://media.tenor.com/vB0kNQZ3JhoAAAAC/drift-nissan.gif",
+  "https://media.tenor.com/Q0X7yQ9jPq4AAAAC/burnout-drift.gif",
+  "https://media.tenor.com/kZ8xVn3zQKcAAAAC/tokyo-drift.gif",
+  "https://media.tenor.com/pR8Yb3n6qUAAAAAC/drift-race.gif",
+  "https://media.tenor.com/mHqg8V4bXzcAAAAC/jdm-drift.gif",
+  "https://media.tenor.com/wZ9Xn0qJ8kMAAAAC/drift-slide.gif",
+  "https://media.tenor.com/dQv4Z8Y3rGkAAAAC/skyline-drift.gif",
 }
-uSt.gifSearch = function(q)
-  if uSt.gifBusy then return end
-  uSt.gifBusy = true
-  uSt.gifMsg = "جاري البحث..."
-  local enc = tostring(q or ""):gsub("([^%w%-%._~])", function(c) return string.format("%%%02X", string.byte(c)) end)
-  -- v2 أولاً (أحدث) ثم v1 كبديل
-  local url = "https://tenor.googleapis.com/v2/search?q=" .. enc .. "&key=LIVDSRZULELA&client_key=teamkabos&limit=30&media_filter=gif,tinygif&contentfilter=high"
-  local function parse(body)
-    local ok, data = pcall(JSON.parse, body)
-    if not ok or type(data) ~= "table" then return nil end
-    local res = data.results
-    if type(res) ~= "table" then return nil end
-    local out = {}
-    for _, it in ipairs(res) do
-      local mf = it.media_formats or (it.media and it.media[1])
-      local g = mf and (mf.tinygif or mf.gif or mf.nanogif)
-      local u = g and g.url
-      if u then out[#out + 1] = u end
-    end
-    return out
-  end
-  local function done(list, why)
-    uSt.gifBusy = false
-    if list and #list > 0 then uSt.gifList = list; uSt.gifMsg = #list .. " نتيجة"
-    else uSt.gifMsg = why or "ما فيه نتائج" end
-  end
-  local tried2 = false
-  local function tryFetch(u, isV2)
-    local ok = pcall(function()
-      web.get(u, function(err, resp)
-        if (err or not resp or not resp.body) then
-          if isV2 and not tried2 then tried2 = true
-            tryFetch("https://g.tenor.com/v1/search?q=" .. enc .. "&key=LIVDSRZULELA&limit=30&media_filter=minimal&contentfilter=high", false)
-          else done(nil, "تعذّر الاتصال") end
-          return
-        end
-        local list = parse(resp.body)
-        if (not list or #list == 0) and isV2 and not tried2 then tried2 = true
-          tryFetch("https://g.tenor.com/v1/search?q=" .. enc .. "&key=LIVDSRZULELA&limit=30&media_filter=minimal&contentfilter=high", false)
-        else done(list) end
-      end)
-    end)
-    if not ok then done(nil, "web.get غير متاح") end
-  end
-  tryFetch(url, true)
-end
+uSt.gifSearch = function(q) end   -- لا بحث بالويب
 
 uSt.gifSend = function(url)
   if not url or url == "" then return end
@@ -2764,10 +2728,7 @@ local function drawChatBar(sim)
     if bigButton(234, 5, 34, 20, "💬", stor.chatPhrases and rgbm(0.2, 0.5, 0.36, 1) or rgbm(0.32, 0.32, 0.38, 1), "##phtog") then stor.chatPhrases = not stor.chatPhrases end
     if bigButton(272, 5, 40, 20, "GIF", uSt.gifOpen and rgbm(0.2, 0.5, 0.36, 1) or rgbm(0.32, 0.32, 0.38, 1), "##giftog") then
       uSt.gifOpen = not uSt.gifOpen
-      if uSt.gifOpen then
-        if #uSt.gifList == 0 then uSt.gifList = uSt.gifSeed end   -- صور فورية بلا انتظار
-        uSt.gifSearch(uSt.gifQ)                                    -- ثم النتائج الحقيقية
-      end
+      if uSt.gifOpen and #uSt.gifList == 0 then uSt.gifList = uSt.gifSeed end
     end
     ui.drawRectFilled(vec2(10, topY), vec2(bw - 10, topY + histH), rgbm(0, 0, 0, 0.28), 10)
     ui.setCursor(vec2(10, topY))
@@ -2881,38 +2842,32 @@ local function drawChatBar(sim)
         ui.setCursor(vec2(0, n * 38 + 4)); ui.dummy(vec2(1, 1))
       end)
     end
-    -- 🎬 لوحة الـGIF: تغطي منطقة السجل لما تكون مفتوحة، وتختفي بالضغط على الزر أو بعد الإرسال
+    -- 🎬 لوحة الـGIF: شبكة جاهزة تظهر فوراً، بلا بحث
     if uSt.gifOpen then
+      if #uSt.gifList == 0 then uSt.gifList = uSt.gifSeed end
       ui.drawRectFilled(vec2(10, topY), vec2(bw - 10, topY + histH), rgbm(0.05, 0.06, 0.09, 0.97), 10)
       ui.drawRect(vec2(10, topY), vec2(bw - 10, topY + histH), rgbm(ACC.r, ACC.g, ACC.b, 0.7), 10, nil, 1.4)
-      ui.setCursor(vec2(120, topY + 6)); ui.setNextItemWidth(bw - 260)
-      local gq, gch, gent = ui.inputText("##gifq" .. uSt.gifQGen, uSt.gifQ, ui.InputTextFlags.RetainSelection)
-      if gch then uSt.gifQ = gq end
-      ui.drawRect(vec2(120, topY + 4), vec2(bw - 140, topY + 28), rgbm(1, 1, 1, 0.15), 6, nil, 1)
-      if bigButton(20, topY + 4, 92, 24, "🔎 ابحث", ACC, "##gifgo") or gent then uSt.gifSearch(uSt.gifQ) end
-      dwRightBox(uSt.gifMsg, 10, bw - 132, topY + 6, 118, 18, CDm)
-      ui.setCursor(vec2(16, topY + 34))
-      ui.childWindow("##gifgrid", vec2(bw - 32, histH - 40), function()
+      dwBox("اختر GIF", 13, 0, topY + 6, bw, 18, CY)
+      ui.setCursor(vec2(16, topY + 30))
+      ui.childWindow("##gifgrid", vec2(bw - 32, histH - 36), function()
         local ww = ui.windowWidth() - 14
         local cols2 = 4
         local cw2 = (ww - (cols2 - 1) * 6) / cols2
         local ch2 = cw2 * 0.62
-        for i, url in ipairs(uSt.gifList) do
-          local cx2 = ((i - 1) % cols2) * (cw2 + 6)
-          local cy2 = math.floor((i - 1) / cols2) * (ch2 + 6)
+        for i2, url in ipairs(uSt.gifList) do
+          local cx2 = ((i2 - 1) % cols2) * (cw2 + 6)
+          local cy2 = math.floor((i2 - 1) / cols2) * (ch2 + 6)
           ui.setCursor(vec2(cx2, cy2))
-          local cl2 = ui.invisibleButton("##gf" .. i, vec2(cw2, ch2))
+          local cl2 = ui.invisibleButton("##gf" .. i2, vec2(cw2, ch2))
+          ui.drawRectFilled(vec2(cx2, cy2), vec2(cx2 + cw2, cy2 + ch2), rgbm(0, 0, 0, 0.3), 6)
           pcall(function() ui.drawImage(url, vec2(cx2, cy2), vec2(cx2 + cw2, cy2 + ch2)) end)
           if ui.itemHovered() then ui.drawRect(vec2(cx2, cy2), vec2(cx2 + cw2, cy2 + ch2), ACC, 6, nil, 2) end
           if cl2 then uSt.gifSend(url) end
         end
-        if #uSt.gifList == 0 then
-          if not uSt.gifBusy then uSt.gifList = uSt.gifSeed; uSt.gifSearch(uSt.gifQ) end
-        end
         ui.setCursor(vec2(0, math.ceil(#uSt.gifList / 4) * (ch2 + 6) + 6)); ui.dummy(vec2(1, 1))
       end)
     end
-    local recY = topY + histH + 6
+    local recY = topY + histH + 6    local recY = topY + histH + 6
     if stor.chatEmoji then
     local recs = { stor.rec1, stor.rec2, stor.rec3 }
     for i = 1, 3 do
@@ -3197,21 +3152,12 @@ uSt.vanillaHide = function()
       end
     end
     local w = uSt.vanWin
-    if w and w:valid() then
-      -- لو صار شات اللعبة ظاهر (اللاعب ضغط عليه) → افتح شاتنا وأخفِ اللعبة
-      local vis = true
-      pcall(function() if w.visible ~= nil then vis = w.visible end end)
-      if vis and uSt.vanHidden then
-        chatBarOpen = true; chatBarJustOpened = true
-        uSt.chatBarIdle = pulseT; uSt.chatMin = false; uSt.chatPinned = true
-      end
-      if not uSt.vanHidden or now >= (uSt.vanReapplyAt or 0) then
-        w:setVisible(false)
-        w:resize(vec2(1, 1))
-        w:move(vec2(99999, 99999))
-        uSt.vanHidden = true
-        uSt.vanReapplyAt = now + 2
-      end
+    if w and w:valid() and (not uSt.vanHidden or now >= (uSt.vanReapplyAt or 0)) then
+      w:setVisible(false)
+      w:resize(vec2(1, 1))
+      w:move(vec2(99999, 99999))
+      uSt.vanHidden = true
+      uSt.vanReapplyAt = now + 5
     end
   end)
 end
