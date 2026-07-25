@@ -2176,6 +2176,8 @@ uSt.gifSeed = {
   "https://media1.tenor.com/m/VLHyJYfUG6cAAAAd/2ws.gif",
   "https://media1.tenor.com/m/qiKXpsSLt1QAAAAd/drift-drifting.gif",
   "https://media1.tenor.com/m/13uSRhTtY-UAAAAd/hajwala-saudi-drift.gif",
+  "https://media1.tenor.com/m/hbbebHdX53IAAAAd/drifting-cars.gif",
+  "https://media1.tenor.com/m/M1lYFo_dvjUAAAAd/saudi-drift-arab-drift.gif",
 }
 uSt.gifSearch = function(q)
   -- لا بحث بالويب: الصور مزروعة جاهزة
@@ -3134,33 +3136,24 @@ end
 -- إخفاء شات اللعبة الأصلي (طريقة IDDL): نلقى نافذته ونخفيها ونعيد الإخفاء دورياً
 -- شات اللعبة الأصلي: نخفيه دورياً، وأي محاولة لفتحه أو الكتابة فيه = نفتح شاتنا العربي
 uSt.vanillaHide = function()
+  -- طرق CSP المباشرة لإخفاء شات اللعبة (تختلف بين النسخ، نجربها كلها بأمان)
+  if uSt.vanDone then return end
+  uSt.vanTry = (uSt.vanTry or 0) + 1
+  if uSt.vanTry > 300 then uSt.vanDone = true end   -- نوقف المحاولة بعد فترة
+  pcall(function() if ac.setChatMessagesHidden then ac.setChatMessagesHidden(true) end end)
+  pcall(function() if ac.setChatVisible then ac.setChatVisible(false) end end)
   pcall(function()
-    local now = pulseT
+    -- محاولة الوصول لنافذة الشات (لو نسختك تدعمها)
     if not uSt.vanWin then
-      if now - (uSt.vanLastTry or -10) < 3 then return end
-      uSt.vanLastTry = now
-      -- اطبع كل نوافذ التطبيقات مرة وحدة عشان نعرف اسم نافذة الشات الحقيقي
-      if not uSt.vanEnum then
-        uSt.vanEnum = true
-        pcall(function()
-          local wins = ac.getAppWindows and ac.getAppWindows() or nil
-          if wins then for _, wn in ipairs(wins) do pcall(function() ac.log("[TeamKabos APPWIN] " .. tostring(wn)) end) end end
-        end)
-      end
-      local names = { 'Chat', 'chat', 'AC_CHAT', 'ac_chat', 'CHAT', 'ACChat', 'chatapp', 'Chat App', 'chat_app', 'RaceChat', 'race_chat', 'OnlineChat', 'online_chat', 'ChatWindow', 'chat_window', 'AC Chat', 'CHAT_WINDOW', 'Chat Window' }
-      for _, nm in ipairs(names) do
+      for _, nm in ipairs({ 'Chat', 'chat', 'AC_CHAT', 'ac_chat', 'CHAT' }) do
         local w = nil
         pcall(function() w = ac.accessAppWindow(nm) end)
-        if w and w:valid() then uSt.vanWin = w; uSt.vanName = nm; pcall(function() ac.log("[TeamKabos] vanilla chat window = " .. nm) end); break end
+        if w and w.valid and w:valid() then uSt.vanWin = w; break end
       end
     end
     local w = uSt.vanWin
-    if w and w:valid() and (not uSt.vanHidden or now >= (uSt.vanReapplyAt or 0)) then
-      w:setVisible(false)
-      w:resize(vec2(1, 1))
-      w:move(vec2(99999, 99999))
-      uSt.vanHidden = true
-      uSt.vanReapplyAt = now + 5
+    if w and w:valid() then
+      w:setVisible(false); w:resize(vec2(1, 1)); w:move(vec2(99999, 99999))
     end
   end)
 end
