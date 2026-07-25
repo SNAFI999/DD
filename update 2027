@@ -2170,36 +2170,60 @@ uSt.gifList = {}
 uSt.gifBusy = false
 uSt.gifMsg = ""
 uSt.gifPreloaded = false
+-- شبكة مبدئية تظهر فوراً بدون انتظار الشبكة (روابط Tenor مباشرة لدرفت سعودي)
+uSt.gifSeed = {
+  "https://media.tenor.com/9GJHqZ6nQ2cAAAAC/drift-drifting.gif",
+  "https://media.tenor.com/S3pxq3aG2u8AAAAC/car-drift.gif",
+  "https://media.tenor.com/1Wd8n7dWQvUAAAAC/drift-car.gif",
+  "https://media.tenor.com/xkGnO6d4bYcAAAAC/drift-smoke.gif",
+}
 uSt.gifSearch = function(q)
   if uSt.gifBusy then return end
   uSt.gifBusy = true
   uSt.gifMsg = "جاري البحث..."
-  uSt.gifList = {}
   local enc = tostring(q or ""):gsub("([^%w%-%._~])", function(c) return string.format("%%%02X", string.byte(c)) end)
-  local url = "https://g.tenor.com/v1/search?q=" .. enc .. "&key=LIVDSRZULELA&limit=24&media_filter=minimal&contentfilter=high"
-  pcall(function()
-    web.get(url, function(err, resp)
-      uSt.gifBusy = false
-      if err or not resp or not resp.body then uSt.gifMsg = "تعذّر الاتصال"; return end
-      local ok, data = pcall(JSON.parse, resp.body)
-      if not ok or type(data) ~= "table" or type(data.results) ~= "table" then uSt.gifMsg = "ما فيه نتائج"; return end
-      local out = {}
-      for _, it in ipairs(data.results) do
-        local m = it.media and it.media[1]
-        local g = m and (m.tinygif or m.gif or m.nanogif)
-        if g and g.url then out[#out + 1] = g.url end
-      end
-      uSt.gifList = out
-      uSt.gifMsg = (#out > 0) and (#out .. " نتيجة") or "ما فيه نتائج"
+  -- v2 أولاً (أحدث) ثم v1 كبديل
+  local url = "https://tenor.googleapis.com/v2/search?q=" .. enc .. "&key=LIVDSRZULELA&client_key=teamkabos&limit=30&media_filter=gif,tinygif&contentfilter=high"
+  local function parse(body)
+    local ok, data = pcall(JSON.parse, body)
+    if not ok or type(data) ~= "table" then return nil end
+    local res = data.results
+    if type(res) ~= "table" then return nil end
+    local out = {}
+    for _, it in ipairs(res) do
+      local mf = it.media_formats or (it.media and it.media[1])
+      local g = mf and (mf.tinygif or mf.gif or mf.nanogif)
+      local u = g and g.url
+      if u then out[#out + 1] = u end
+    end
+    return out
+  end
+  local function done(list, why)
+    uSt.gifBusy = false
+    if list and #list > 0 then uSt.gifList = list; uSt.gifMsg = #list .. " نتيجة"
+    else uSt.gifMsg = why or "ما فيه نتائج" end
+  end
+  local tried2 = false
+  local function tryFetch(u, isV2)
+    local ok = pcall(function()
+      web.get(u, function(err, resp)
+        if (err or not resp or not resp.body) then
+          if isV2 and not tried2 then tried2 = true
+            tryFetch("https://g.tenor.com/v1/search?q=" .. enc .. "&key=LIVDSRZULELA&limit=30&media_filter=minimal&contentfilter=high", false)
+          else done(nil, "تعذّر الاتصال") end
+          return
+        end
+        local list = parse(resp.body)
+        if (not list or #list == 0) and isV2 and not tried2 then tried2 = true
+          tryFetch("https://g.tenor.com/v1/search?q=" .. enc .. "&key=LIVDSRZULELA&limit=30&media_filter=minimal&contentfilter=high", false)
+        else done(list) end
+      end)
     end)
-  end)
+    if not ok then done(nil, "web.get غير متاح") end
+  end
+  tryFetch(url, true)
 end
--- تحميل مسبق لـsaudidrift أول ما يشتغل السكربت عشان تظهر فوراً عند فتح الزر
-uSt.gifPreload = function()
-  if uSt.gifPreloaded then return end
-  uSt.gifPreloaded = true
-  uSt.gifSearch("saudidrift")
-end
+
 uSt.gifSend = function(url)
   if not url or url == "" then return end
   pcall(function() ac.sendChatMessage("$TeamKabos_GIF:" .. url) end)
@@ -2740,7 +2764,10 @@ local function drawChatBar(sim)
     if bigButton(234, 5, 34, 20, "💬", stor.chatPhrases and rgbm(0.2, 0.5, 0.36, 1) or rgbm(0.32, 0.32, 0.38, 1), "##phtog") then stor.chatPhrases = not stor.chatPhrases end
     if bigButton(272, 5, 40, 20, "GIF", uSt.gifOpen and rgbm(0.2, 0.5, 0.36, 1) or rgbm(0.32, 0.32, 0.38, 1), "##giftog") then
       uSt.gifOpen = not uSt.gifOpen
-      if uSt.gifOpen and #uSt.gifList == 0 and not uSt.gifBusy then uSt.gifSearch(uSt.gifQ) end
+      if uSt.gifOpen then
+        if #uSt.gifList == 0 then uSt.gifList = uSt.gifSeed end   -- صور فورية بلا انتظار
+        uSt.gifSearch(uSt.gifQ)                                    -- ثم النتائج الحقيقية
+      end
     end
     ui.drawRectFilled(vec2(10, topY), vec2(bw - 10, topY + histH), rgbm(0, 0, 0, 0.28), 10)
     ui.setCursor(vec2(10, topY))
@@ -2880,8 +2907,7 @@ local function drawChatBar(sim)
           if cl2 then uSt.gifSend(url) end
         end
         if #uSt.gifList == 0 then
-          if not uSt.gifBusy then uSt.gifSearch(uSt.gifQ) end   -- حمّل تلقائياً بدون ما ينتظر ضغط بحث
-          dwBox("جاري تحميل الـGIF...", 13, 0, 20, ww, 20, CDm)
+          if not uSt.gifBusy then uSt.gifList = uSt.gifSeed; uSt.gifSearch(uSt.gifQ) end
         end
         ui.setCursor(vec2(0, math.ceil(#uSt.gifList / 4) * (ch2 + 6) + 6)); ui.dummy(vec2(1, 1))
       end)
@@ -2998,9 +3024,11 @@ local function drawChatBar(sim)
     local overBar = lp.x >= -14 and lp.x <= (bw + sidePw + 14) and lp.y >= -14 and lp.y <= (bh + 14)
     if overBar or chatInput ~= "" or chatDragging then
       uSt.chatBarIdle = pulseT
+      uSt.chatPinned = false   -- تفاعل الماوس: من الحين نسمح بالتصغير لما يبعد
     end
   end)
-  if chatBarOpen and (pulseT - (uSt.chatBarIdle or pulseT)) > 3 then uSt.chatMin = true end
+  -- ما نصغّر إلا لو ابتعد الماوس فعلاً ومرّت مدة أطول (٦ث)، ومو لما يكون مفتوح بـ C ساكن
+  if chatBarOpen and not uSt.chatPinned and (pulseT - (uSt.chatBarIdle or pulseT)) > 6 then uSt.chatMin = true end
 end
 
 ---------------------------------------------------------------
@@ -3016,7 +3044,10 @@ local function inputCheck()
   if ui.keyboardButtonPressed(ui.KeyIndex.V, false) and not busy then repairCar() end
   if ui.keyboardButtonPressed(ui.KeyIndex.C, false) and not busy then
     chatBarOpen = not chatBarOpen
-    if chatBarOpen then chatBarJustOpened = true; uSt.chatBarIdle = pulseT; uSt.chatMin = false end
+    if chatBarOpen then
+      chatBarJustOpened = true; uSt.chatBarIdle = pulseT; uSt.chatMin = false
+      uSt.chatPinned = true    -- فُتح بـ C: يبقى ظاهر لين يتفاعل معه ويبعد الماوس
+    end
   end
   if ui.keyboardButtonPressed(ui.KeyIndex.X, false) and not busy then
     pcall(function() physics.teleportCarTo(0, ac.SpawnSet.Pits) end)
@@ -3153,6 +3184,7 @@ end
 
 ---------------------------------------------------------------
 -- إخفاء شات اللعبة الأصلي (طريقة IDDL): نلقى نافذته ونخفيها ونعيد الإخفاء دورياً
+-- شات اللعبة الأصلي: نخفيه دورياً، وأي محاولة لفتحه أو الكتابة فيه = نفتح شاتنا العربي
 uSt.vanillaHide = function()
   pcall(function()
     local now = pulseT
@@ -3165,12 +3197,21 @@ uSt.vanillaHide = function()
       end
     end
     local w = uSt.vanWin
-    if w and w:valid() and (not uSt.vanHidden or now >= (uSt.vanReapplyAt or 0)) then
-      w:setVisible(false)
-      w:resize(vec2(1, 1))
-      w:move(vec2(99999, 99999))
-      uSt.vanHidden = true
-      uSt.vanReapplyAt = now + 5
+    if w and w:valid() then
+      -- لو صار شات اللعبة ظاهر (اللاعب ضغط عليه) → افتح شاتنا وأخفِ اللعبة
+      local vis = true
+      pcall(function() if w.visible ~= nil then vis = w.visible end end)
+      if vis and uSt.vanHidden then
+        chatBarOpen = true; chatBarJustOpened = true
+        uSt.chatBarIdle = pulseT; uSt.chatMin = false; uSt.chatPinned = true
+      end
+      if not uSt.vanHidden or now >= (uSt.vanReapplyAt or 0) then
+        w:setVisible(false)
+        w:resize(vec2(1, 1))
+        w:move(vec2(99999, 99999))
+        uSt.vanHidden = true
+        uSt.vanReapplyAt = now + 2
+      end
     end
   end)
 end
