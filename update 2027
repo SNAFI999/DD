@@ -2169,6 +2169,7 @@ uSt.gifQGen = 0
 uSt.gifList = {}
 uSt.gifBusy = false
 uSt.gifMsg = ""
+uSt.gifPreloaded = false
 uSt.gifSearch = function(q)
   if uSt.gifBusy then return end
   uSt.gifBusy = true
@@ -2192,6 +2193,12 @@ uSt.gifSearch = function(q)
       uSt.gifMsg = (#out > 0) and (#out .. " نتيجة") or "ما فيه نتائج"
     end)
   end)
+end
+-- تحميل مسبق لـsaudidrift أول ما يشتغل السكربت عشان تظهر فوراً عند فتح الزر
+uSt.gifPreload = function()
+  if uSt.gifPreloaded then return end
+  uSt.gifPreloaded = true
+  uSt.gifSearch("saudidrift")
 end
 uSt.gifSend = function(url)
   if not url or url == "" then return end
@@ -2733,7 +2740,7 @@ local function drawChatBar(sim)
     if bigButton(234, 5, 34, 20, "💬", stor.chatPhrases and rgbm(0.2, 0.5, 0.36, 1) or rgbm(0.32, 0.32, 0.38, 1), "##phtog") then stor.chatPhrases = not stor.chatPhrases end
     if bigButton(272, 5, 40, 20, "GIF", uSt.gifOpen and rgbm(0.2, 0.5, 0.36, 1) or rgbm(0.32, 0.32, 0.38, 1), "##giftog") then
       uSt.gifOpen = not uSt.gifOpen
-      if uSt.gifOpen and #uSt.gifList == 0 then uSt.gifSearch(uSt.gifQ) end
+      if uSt.gifOpen and #uSt.gifList == 0 and not uSt.gifBusy then uSt.gifSearch(uSt.gifQ) end
     end
     ui.drawRectFilled(vec2(10, topY), vec2(bw - 10, topY + histH), rgbm(0, 0, 0, 0.28), 10)
     ui.setCursor(vec2(10, topY))
@@ -2872,7 +2879,10 @@ local function drawChatBar(sim)
           if ui.itemHovered() then ui.drawRect(vec2(cx2, cy2), vec2(cx2 + cw2, cy2 + ch2), ACC, 6, nil, 2) end
           if cl2 then uSt.gifSend(url) end
         end
-        if #uSt.gifList == 0 then dwBox(uSt.gifBusy and "جاري التحميل..." or "اكتب كلمة وابحث", 13, 0, 20, ww, 20, CDm) end
+        if #uSt.gifList == 0 then
+          if not uSt.gifBusy then uSt.gifSearch(uSt.gifQ) end   -- حمّل تلقائياً بدون ما ينتظر ضغط بحث
+          dwBox("جاري تحميل الـGIF...", 13, 0, 20, ww, 20, CDm)
+        end
         ui.setCursor(vec2(0, math.ceil(#uSt.gifList / 4) * (ch2 + 6) + 6)); ui.dummy(vec2(1, 1))
       end)
     end
@@ -3142,6 +3152,29 @@ local function drawRewindHud(sim)
 end
 
 ---------------------------------------------------------------
+-- إخفاء شات اللعبة الأصلي (طريقة IDDL): نلقى نافذته ونخفيها ونعيد الإخفاء دورياً
+uSt.vanillaHide = function()
+  pcall(function()
+    local now = pulseT
+    if not uSt.vanWin then
+      if now - (uSt.vanLastTry or -10) < 3 then return end
+      uSt.vanLastTry = now
+      for _, nm in ipairs({ 'Chat', 'chat', 'AC_CHAT', 'ac_chat', 'CHAT' }) do
+        local w = ac.accessAppWindow(nm)
+        if w and w:valid() then uSt.vanWin = w; break end
+      end
+    end
+    local w = uSt.vanWin
+    if w and w:valid() and (not uSt.vanHidden or now >= (uSt.vanReapplyAt or 0)) then
+      w:setVisible(false)
+      w:resize(vec2(1, 1))
+      w:move(vec2(99999, 99999))
+      uSt.vanHidden = true
+      uSt.vanReapplyAt = now + 5
+    end
+  end)
+end
+
 function script.update(dt)
   if not uSt.perfInit then uSt.perfInit = true; applyPerfMode(stor.perfMode) end
   if stor.perfMode then
@@ -3184,6 +3217,7 @@ function script.update(dt)
     end
   end
   pulseT = pulseT + dt
+  if uSt.vanillaHide then pcall(uSt.vanillaHide) end   -- إخفاء شات اللعبة الأصلي
   -- لوحة المفاتيح أولاً: أي خطأ تحتها ما يقدر يقتل القائمة
   inputCheck()
   -- 🚦 وضع السرعة معزول داخل pcall
@@ -3214,6 +3248,7 @@ function script.update(dt)
     pcall(uSt.czBroadcast)
   end
   if uSt.czPump then pcall(uSt.czPump) end   -- طابور الإرسال: سطر كل ثانية
+  if not uSt.gifPreloaded and pulseT > 2 then pcall(uSt.gifPreload) end   -- حمّل GIF مبكراً
   -- إعادة بث تعديلات السيارة كل 20 ثانية للداخلين الجدد
   local anyBp = false
   pcall(function()
@@ -3407,6 +3442,28 @@ end
 function script.drawUI()
   local sim = ac.getSim()
   uSt.drawSpectate(sim)
+
+  -- إخفاء شات اللعبة الأصلي (طريقة IDDL): نبحث عن نافذته ونخفيها، ونعيد التطبيق كل 5ث
+  pcall(function()
+    local now = pulseT
+    if not uSt.vanillaWin then
+      if now - (uSt.vanillaLastTry or -10) >= 3 then
+        uSt.vanillaLastTry = now
+        for _, nm in ipairs({ "Chat", "chat", "AC_CHAT", "ac_chat", "CHAT" }) do
+          local w = ac.accessAppWindow(nm)
+          if w and w:valid() then uSt.vanillaWin = w; break end
+        end
+      end
+    end
+    local w = uSt.vanillaWin
+    if w and w:valid() and (not uSt.vanillaHidden or now >= (uSt.vanillaReapplyAt or 0)) then
+      w:setVisible(false)
+      w:resize(vec2(1, 1))
+      w:move(vec2(99999, 99999))
+      uSt.vanillaHidden = true
+      uSt.vanillaReapplyAt = now + 5
+    end
+  end)
 
   if not rulesInit then
     rulesInit = true
