@@ -2173,20 +2173,18 @@ uSt.gifPreloaded = false
 -- شبكة مبدئية تظهر فوراً بدون انتظار الشبكة (روابط Tenor مباشرة لدرفت سعودي)
 -- مجموعة GIF جاهزة داخل السكربت (روابط مباشرة تُعرض فوراً، بلا بحث بالويب)
 uSt.gifSeed = {
-  "https://media.tenor.com/9GJHqZ6nQ2cAAAAC/drift-drifting.gif",
-  "https://media.tenor.com/S3pxq3aG2u8AAAAC/car-drift.gif",
-  "https://media.tenor.com/1Wd8n7dWQvUAAAAC/drift-car.gif",
-  "https://media.tenor.com/xkGnO6d4bYcAAAAC/drift-smoke.gif",
-  "https://media.tenor.com/oPqLp8gVjhIAAAAC/drift-supra.gif",
-  "https://media.tenor.com/vB0kNQZ3JhoAAAAC/drift-nissan.gif",
-  "https://media.tenor.com/Q0X7yQ9jPq4AAAAC/burnout-drift.gif",
-  "https://media.tenor.com/kZ8xVn3zQKcAAAAC/tokyo-drift.gif",
-  "https://media.tenor.com/pR8Yb3n6qUAAAAAC/drift-race.gif",
-  "https://media.tenor.com/mHqg8V4bXzcAAAAC/jdm-drift.gif",
-  "https://media.tenor.com/wZ9Xn0qJ8kMAAAAC/drift-slide.gif",
-  "https://media.tenor.com/dQv4Z8Y3rGkAAAAC/skyline-drift.gif",
+  "https://media1.tenor.com/m/VLHyJYfUG6cAAAAd/2ws.gif",
+  "https://media1.tenor.com/m/8Yr7hQvknTQAAAAd/cars-drift.gif",
+  "https://media1.tenor.com/m/o0hucw6dRfMAAAAd/cars-drift.gif",
+  "https://media1.tenor.com/m/xB4Yxw8gVMkAAAAd/drift-drifting.gif",
+  "https://media1.tenor.com/m/dQ1lZ7yq5m8AAAAd/drift-cars.gif",
+  "https://media1.tenor.com/m/8QxN4mCZxL4AAAAd/drifting-240sx.gif",
+  "https://media1.tenor.com/m/mQ7Pb0lVL9cAAAAd/saudi-drifting.gif",
+  "https://media1.tenor.com/m/Gm7Kx3n9lNsAAAAd/saudi-driving.gif",
 }
-uSt.gifSearch = function(q) end   -- لا بحث بالويب
+uSt.gifSearch = function(q)
+  -- لا بحث بالويب: الصور مزروعة جاهزة
+end
 
 uSt.gifSend = function(url)
   if not url or url == "" then return end
@@ -3146,9 +3144,11 @@ uSt.vanillaHide = function()
     if not uSt.vanWin then
       if now - (uSt.vanLastTry or -10) < 3 then return end
       uSt.vanLastTry = now
-      for _, nm in ipairs({ 'Chat', 'chat', 'AC_CHAT', 'ac_chat', 'CHAT' }) do
-        local w = ac.accessAppWindow(nm)
-        if w and w:valid() then uSt.vanWin = w; break end
+      local names = { 'Chat', 'chat', 'AC_CHAT', 'ac_chat', 'CHAT', 'ACChat', 'chatapp', 'Chat App', 'chat_app', 'RaceChat', 'race_chat', 'OnlineChat', 'online_chat', 'ChatWindow', 'chat_window', 'AC Chat' }
+      for _, nm in ipairs(names) do
+        local w = nil
+        pcall(function() w = ac.accessAppWindow(nm) end)
+        if w and w:valid() then uSt.vanWin = w; uSt.vanName = nm; pcall(function() ac.log("[TeamKabos] vanilla chat window = " .. nm) end); break end
       end
     end
     local w = uSt.vanWin
@@ -3538,3 +3538,4 @@ function script.draw3D()
 end
 
 ac.log("TeamKabos Menu (keyboard M/B/V/P) + PersonalTime/Weather/CarSwap loaded")
+
