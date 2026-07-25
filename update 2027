@@ -2174,13 +2174,8 @@ uSt.gifPreloaded = false
 -- مجموعة GIF جاهزة داخل السكربت (روابط مباشرة تُعرض فوراً، بلا بحث بالويب)
 uSt.gifSeed = {
   "https://media1.tenor.com/m/VLHyJYfUG6cAAAAd/2ws.gif",
-  "https://media1.tenor.com/m/8Yr7hQvknTQAAAAd/cars-drift.gif",
-  "https://media1.tenor.com/m/o0hucw6dRfMAAAAd/cars-drift.gif",
-  "https://media1.tenor.com/m/xB4Yxw8gVMkAAAAd/drift-drifting.gif",
-  "https://media1.tenor.com/m/dQ1lZ7yq5m8AAAAd/drift-cars.gif",
-  "https://media1.tenor.com/m/8QxN4mCZxL4AAAAd/drifting-240sx.gif",
-  "https://media1.tenor.com/m/mQ7Pb0lVL9cAAAAd/saudi-drifting.gif",
-  "https://media1.tenor.com/m/Gm7Kx3n9lNsAAAAd/saudi-driving.gif",
+  "https://media1.tenor.com/m/qiKXpsSLt1QAAAAd/drift-drifting.gif",
+  "https://media1.tenor.com/m/13uSRhTtY-UAAAAd/hajwala-saudi-drift.gif",
 }
 uSt.gifSearch = function(q)
   -- لا بحث بالويب: الصور مزروعة جاهزة
@@ -3144,7 +3139,15 @@ uSt.vanillaHide = function()
     if not uSt.vanWin then
       if now - (uSt.vanLastTry or -10) < 3 then return end
       uSt.vanLastTry = now
-      local names = { 'Chat', 'chat', 'AC_CHAT', 'ac_chat', 'CHAT', 'ACChat', 'chatapp', 'Chat App', 'chat_app', 'RaceChat', 'race_chat', 'OnlineChat', 'online_chat', 'ChatWindow', 'chat_window', 'AC Chat' }
+      -- اطبع كل نوافذ التطبيقات مرة وحدة عشان نعرف اسم نافذة الشات الحقيقي
+      if not uSt.vanEnum then
+        uSt.vanEnum = true
+        pcall(function()
+          local wins = ac.getAppWindows and ac.getAppWindows() or nil
+          if wins then for _, wn in ipairs(wins) do pcall(function() ac.log("[TeamKabos APPWIN] " .. tostring(wn)) end) end end
+        end)
+      end
+      local names = { 'Chat', 'chat', 'AC_CHAT', 'ac_chat', 'CHAT', 'ACChat', 'chatapp', 'Chat App', 'chat_app', 'RaceChat', 'race_chat', 'OnlineChat', 'online_chat', 'ChatWindow', 'chat_window', 'AC Chat', 'CHAT_WINDOW', 'Chat Window' }
       for _, nm in ipairs(names) do
         local w = nil
         pcall(function() w = ac.accessAppWindow(nm) end)
